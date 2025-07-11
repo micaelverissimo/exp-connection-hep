@@ -48,7 +48,7 @@ class sp_index(Callback):
     def on_epoch_end(self, epoch, logs={}):
 
         y_true = self.validation_data[1]
-        y_hat = self.model.predict(self.validation_data[0],batch_size=1024).ravel()
+        y_hat = self.model.predict(self.validation_data[0],batch_size=1024, verbose=0).ravel()
 
         # Computes SP
         fa, pd, thresholds = roc_curve(y_true, y_hat)
@@ -65,7 +65,8 @@ class sp_index(Callback):
         if round(sp[knee],4) > round(self.__best_sp,4):
             self.__best_sp = sp[knee]
             if self.save_the_best:
-                logger.info('save the best configuration here...' )
+                if self.verbose:
+                    logger.info('save the best configuration here...' )
                 self.__best_weights =  self.model.get_weights()
                 logs['max_sp_best_epoch_val'] = epoch
             self.count = 0
@@ -73,7 +74,8 @@ class sp_index(Callback):
             self.count += 1
 
         if self.count > self.patience:
-            logger.info('Stopping the Training by SP...')
+            if self.verbose:
+                logger.info('Stopping the Training by SP...')
             self.model.stop_training = True
 
 
@@ -81,7 +83,8 @@ class sp_index(Callback):
     def on_train_end(self, logs={}):
 
         if self.save_the_best:
-            logger.info('Reload the best configuration into the current model...')
+            if self.verbose:
+                logger.info('Reload the best configuration into the current model...')
             try:
                 self.model.set_weights( self.__best_weights )
             except:

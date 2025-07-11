@@ -1,4 +1,4 @@
-__all__ = ["Summary"]
+__all__ = ["Summary", "Reference"]
 
 
 from sklearn.metrics import accuracy_score
@@ -40,7 +40,7 @@ class Summary:
         detailed (bool): If True, includes detailed ROC curves and histograms in the summary.
     """
 
-    def __init__(self, detailed=False):
+    def __init__(self, detailed=False, verbose=True):
         """
         Initialize the Summary class.
 
@@ -48,6 +48,7 @@ class Summary:
             detailed (bool): Whether to include detailed metrics in the summary.
         """
         self.detailed = detailed
+        self.verbose = verbose
 
     def __call__(self, history, kw):
         """
@@ -71,7 +72,8 @@ class Summary:
         sgn_total_val = len(y_val[y_val == 1])
         bkg_total_val = len(y_val[y_val != 1])
 
-        logger.info("Starting the train summary...")
+        if self.verbose:
+            logger.info("Starting the train summary...")
 
         y_pred = model.predict(x_train, batch_size=1024, verbose=0)
         y_pred_val = model.predict(x_val, batch_size=1024, verbose=0)
@@ -98,7 +100,8 @@ class Summary:
             d['hists']['trn_sgn'] = np.histogram(y_pred[y_train == 1], bins=bins)
             d['hists']['trn_bkg'] = np.histogram(y_pred[y_train != 1], bins=bins)
 
-        logger.info(f"Train samples : Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
+        if self.verbose:
+            logger.info(f"Train samples : Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
 
         d['max_sp_pd'] = (pd[knee], int(pd[knee] * sgn_total), sgn_total)
         d['max_sp_fa'] = (fa[knee], int(fa[knee] * bkg_total), bkg_total)
@@ -115,7 +118,8 @@ class Summary:
             d['hists']['val_sgn'] = np.histogram(y_pred_val[y_val == 1], bins=bins)
             d['hists']['val_bkg'] = np.histogram(y_pred_val[y_val != 1], bins=bins)
 
-        logger.info(f"Validation Samples: Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
+        if self.verbose:
+            logger.info(f"Validation Samples: Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
 
         d['max_sp_pd_val'] = (pd[knee], int(pd[knee] * sgn_total_val), sgn_total_val)
         d['max_sp_fa_val'] = (fa[knee], int(fa[knee] * bkg_total_val), bkg_total_val)
@@ -133,7 +137,8 @@ class Summary:
             d['hists']['op_sgn'] = np.histogram(y_pred_op[y_op == 1], bins=bins)
             d['hists']['op_bkg'] = np.histogram(y_pred_op[y_op != 1], bins=bins)
 
-        logger.info(f"Operation Samples : Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
+        if self.verbose:
+            logger.info(f"Operation Samples : Prob. det ({pd[knee]:1.4f}), False Alarm ({fa[knee]:1.4f}), SP ({sp[knee]:1.4f})")
 
         d['threshold_op'] = threshold
         d['max_sp_pd_op'] = (pd[knee], int(pd[knee] * (sgn_total + sgn_total_val)), (sgn_total + sgn_total_val))
@@ -151,18 +156,19 @@ class Reference:
   #
   # Constructor
   #
-  def __init__( self , refs):
+  def __init__( self , refs, verbose=True ):
     
     self.__references = collections.OrderedDict()
-
+    self.verbose = verbose
     for key, ref in refs.items():
 
       pd = [ref['det']['passed'] , ref['det']['total']]
       pd = [pd[0]/pd[1], pd[0], pd[1]]
-      fa = [ref['fake']['passed'] , ref['fake']['total']]
-      fa = [fa[0]/fa[1], fa[0], fa[1]]
-      logger.info('%s (pd=%1.2f, fa=%1.2f, sp=%1.2f)', key, pd[0]*100, fa[0]*100, sp_func(pd[0],fa[0])*100 )
-      self.__references[key] = {'pd':pd, 'fa':fa, 'sp':sp_func(pd[0],fa[0])}
+      #fa = [ref['fake']['passed'] , ref['fake']['total']]
+      #fa = [fa[0]/fa[1], fa[0], fa[1]]
+      if self.verbose:
+        logger.info(f'{key} (pd={pd[0]*100:1.2f})')
+      self.__references[key] = {'pd':pd}
 
  
 
@@ -205,13 +211,14 @@ class Reference:
     history['reference'] = {}
 
     for key, ref in self.__references.items():
-      d = self.calculate( y_train, y_val , y_operation, ref, pd, fa, sp, thresholds, pd_val, fa_val, sp_val, thresholds_val, pd_op,fa_op,sp_op,thresholds_op )
-      logger.info( "          : %s", key )
-      logger.info( "Reference : [Pd: %1.4f] , Fa: %1.4f and SP: %1.4f ", ref['pd'][0]*100, ref['fa'][0]*100, ref['sp']*100 )
-      logger.info( "Train     : [Pd: %1.4f] , Fa: %1.4f and SP: %1.4f ", d['pd'][0]*100, d['fa'][0]*100, d['sp']*100 )
-      logger.info( "Validation: [Pd: %1.4f] , Fa: %1.4f and SP: %1.4f ", d['pd_val'][0]*100, d['fa_val'][0]*100, d['sp_val']*100 )
-      logger.info( "Operation : [Pd: %1.4f] , Fa: %1.4f and SP: %1.4f ", d['pd_op'][0]*100, d['fa_op'][0]*100, d['sp_op']*100 )
-      history['reference'][key] = d
+        d = self.calculate(y_train, y_val, y_operation, ref, pd, fa, sp, thresholds, pd_val, fa_val, sp_val, thresholds_val, pd_op, fa_op, sp_op, thresholds_op)
+        if self.verbose:
+            logger.info(f"          : {key}")
+            logger.info(f"Reference : [Pd: {ref['pd'][0]*100:1.4f}]")
+            logger.info(f"Train     : [Pd: {d['pd'][0]*100:1.4f}] , Fa: {d['fa'][0]*100:1.4f} and SP: {d['sp']*100:1.4f}")
+            logger.info(f"Validation: [Pd: {d['pd_val'][0]*100:1.4f}] , Fa: {d['fa_val'][0]*100:1.4f} and SP: {d['sp_val']*100:1.4f}")
+            logger.info(f"Operation : [Pd: {d['pd_op'][0]*100:1.4f}] , Fa: {d['fa_op'][0]*100:1.4f} and SP: {d['sp_op']*100:1.4f}")
+        history['reference'][key] = d
 
 
 
@@ -238,15 +245,15 @@ class Reference:
       ref['pd'][1] = int(ref['pd'][0]*op_total)
 
     # Check the reference counts
-    op_total = len(y_op[y_op!=1])
-    if ref['fa'][2] !=  op_total:
-      ref['fa'][2] = op_total
-      ref['fa'][1] = int(ref['fa'][0]*op_total)
+    #op_total = len(y_op[y_op!=1])
+    #if ref['fa'][2] !=  op_total:
+    #  ref['fa'][2] = op_total
+    #  ref['fa'][1] = int(ref['fa'][0]*op_total)
 
 
     d['pd_ref'] = ref['pd']
-    d['fa_ref'] = ref['fa']
-    d['sp_ref'] = ref['sp']
+    #d['fa_ref'] = ref['fa']
+    #d['sp_ref'] = ref['sp']
     #d['reference'] = ref['reference']
 
 
