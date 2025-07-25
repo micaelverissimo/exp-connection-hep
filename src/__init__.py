@@ -19,3 +19,11 @@ from .constants import *
 from .crossval import *
 __all__.extend(crossval.__all__)
 from .crossval import *
+
+from .histograms_functions import *
+__all__.extend(histograms_functions.__all__)
+from .histograms_functions import *
+
+from .exponential_connection import *
+__all__.extend(exponential_connection.__all__)
+from .exponential_connection import *
